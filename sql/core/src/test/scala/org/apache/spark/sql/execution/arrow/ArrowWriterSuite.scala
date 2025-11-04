@@ -602,4 +602,22 @@ class ArrowWriterSuite extends SparkFunSuite {
     assert(map2.keyArray().array().mkString(",") == Array(1).mkString(","))
     assert(stringRepr(map2) == Array("bob", "40").mkString(","))
   }
+
+  test("write decimal256 data") {
+    val paycheckSchema = new StructType()
+      .add("name", StringType)
+      .add("currency", StringType)
+      .add("amount", DecimalType(70, 25))
+    val writer = ArrowWriter.create(paycheckSchema, null)
+    val decimal = Decimal("111112222233333444445555566666777778888899999.1111122222333334444455555")
+
+    writer.write(
+      InternalRow(UTF8String.fromString("fred"), UTF8String.fromString("BTC"), decimal))
+
+    writer.finish()
+
+    val reader = new ArrowColumnVector(writer.root.getFieldVectors.get(2))
+
+     assert(reader.getDecimal(0, 70, 25) == decimal)
+  }
 }

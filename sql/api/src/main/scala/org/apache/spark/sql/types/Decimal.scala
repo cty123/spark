@@ -561,6 +561,14 @@ final class Decimal extends Ordered[Decimal] with Serializable {
     val newPrecision = DecimalType.bounded(precision - scale + 1, 0).precision
     toPrecision(newPrecision, 0, ROUND_CEILING, nullOnOverflow = false)
   }
+
+  def getSize: Int = {
+    if (this._precision <= DecimalType.DECIMAL_128_PRECISION)  {
+      DecimalType.DECIMAL_128_PRECISION_SIZE
+    } else {
+      DecimalType.DECIMAL_256_PRECISION_SIZE
+    }
+  }
 }
 
 @Unstable

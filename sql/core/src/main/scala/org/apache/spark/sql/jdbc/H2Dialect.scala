@@ -68,9 +68,9 @@ private[sql] case class H2Dialect() extends JdbcDialect with NoLegacyJDBCError {
   override def getCatalystType(
       sqlType: Int, typeName: String, size: Int, md: MetadataBuilder): Option[DataType] = {
     sqlType match {
-      case Types.NUMERIC if size > 38 =>
+      case Types.NUMERIC if size > DecimalType.MAX_PRECISION =>
         // H2 supports very large decimal precision like 100000. The max precision in Spark is only
-        // 38. Here we shrink both the precision and scale of H2 decimal to fit Spark, and still
+        // 76. Here we shrink both the precision and scale of H2 decimal to fit Spark, and still
         // keep the ratio between them.
         val scale = if (null != md) md.build().getLong("scale") else 0L
         val selectedScale = (DecimalType.MAX_PRECISION * (scale.toDouble / size.toDouble)).toInt

@@ -61,6 +61,8 @@ object ArrowWriter {
       case (DoubleType, vector: Float8Vector) => new DoubleWriter(vector)
       case (DecimalType.Fixed(precision, scale), vector: DecimalVector) =>
         new DecimalWriter(vector, precision, scale)
+      case (DecimalType.Fixed(precision, scale), vector: Decimal256Vector) =>
+        new Decimal256Writer(vector, precision, scale)
       case (StringType, vector: VarCharVector) => new StringWriter(vector)
       case (StringType, vector: LargeVarCharVector) => new LargeStringWriter(vector)
       case (BinaryType, vector: VarBinaryVector) => new BinaryWriter(vector)
@@ -253,6 +255,25 @@ private[arrow] class DoubleWriter(val valueVector: Float8Vector) extends ArrowFi
 
 private[arrow] class DecimalWriter(
     val valueVector: DecimalVector,
+    precision: Int,
+    scale: Int) extends ArrowFieldWriter {
+
+  override def setNull(): Unit = {
+    valueVector.setNull(count)
+  }
+
+  override def setValue(input: SpecializedGetters, ordinal: Int): Unit = {
+    val decimal = input.getDecimal(ordinal, precision, scale)
+    if (decimal.changePrecision(precision, scale)) {
+      valueVector.setSafe(count, decimal.toJavaBigDecimal)
+    } else {
+      setNull()
+    }
+  }
+}
+
+private[arrow] class Decimal256Writer(
+    val valueVector: Decimal256Vector,
     precision: Int,
     scale: Int) extends ArrowFieldWriter {
 

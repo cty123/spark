@@ -168,6 +168,8 @@ public class ArrowColumnVector extends ColumnVector {
       accessor = new DoubleAccessor(float8Vector);
     } else if (vector instanceof DecimalVector decimalVector) {
       accessor = new DecimalAccessor(decimalVector);
+    } else if (vector instanceof Decimal256Vector decimal256Vector) {
+      accessor = new Decimal256Accessor(decimal256Vector);
     } else if (vector instanceof VarCharVector varCharVector) {
       accessor = new StringAccessor(varCharVector);
     } else if (vector instanceof LargeVarCharVector largeVarCharVector) {
@@ -391,6 +393,22 @@ public class ArrowColumnVector extends ColumnVector {
     private final DecimalVector accessor;
 
     DecimalAccessor(DecimalVector vector) {
+      super(vector);
+      this.accessor = vector;
+    }
+
+    @Override
+    final Decimal getDecimal(int rowId, int precision, int scale) {
+      if (isNullAt(rowId)) return null;
+      return Decimal.apply(accessor.getObject(rowId), precision, scale);
+    }
+  }
+
+  static class Decimal256Accessor extends ArrowVectorAccessor {
+
+    private final Decimal256Vector accessor;
+
+    Decimal256Accessor(Decimal256Vector vector) {
       super(vector);
       this.accessor = vector;
     }

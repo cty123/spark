@@ -94,4 +94,27 @@ class UnsafeRowWriterSuite extends SparkFunSuite {
     rowWriter.write(1, variant)
     assert(rowWriter.getRow.getVariant(1).debugString() == variant.debugString())
   }
+
+  test("write and get decimal128 through UnsafeRowWriter") {
+    val rowWriter = new UnsafeRowWriter(2)
+    rowWriter.resetRowWriter()
+    rowWriter.setNullAt(0)
+    assert(rowWriter.getRow.isNullAt(0))
+    assert(rowWriter.getRow.getDecimal(0, 38, 15) === null)
+    val decimal = Decimal("11111222223333344444555.111112222233333")
+    rowWriter.write(1, decimal, 38, 15)
+    assert(rowWriter.getRow.getDecimal(1, 38, 15) === decimal)
+  }
+
+  test("write and get decimal256 through UnsafeRowWriter") {
+    val rowWriter = new UnsafeRowWriter(2)
+    rowWriter.resetRowWriter()
+    rowWriter.setNullAt(0)
+    assert(rowWriter.getRow.isNullAt(0))
+    assert(rowWriter.getRow.getDecimal(0, 76, 25) === null)
+    val decimal = Decimal(
+      "999999999999999999999999999999999999999999999999999.9999999999999999999999999")
+    rowWriter.write(1, decimal, 76, 25)
+    assert(rowWriter.getRow.getDecimal(1, 76, 25) === decimal)
+  }
 }

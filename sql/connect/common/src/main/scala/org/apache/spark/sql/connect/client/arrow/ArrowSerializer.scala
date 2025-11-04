@@ -347,6 +347,44 @@ object ArrowSerializer {
           override def set(index: Int, value: JBigInteger): Unit =
             setDecimal(vector, index, new JBigDecimal(value))
         }
+      case (SparkDecimalEncoder(_), v: Decimal256Vector) =>
+        new FieldSerializer[Decimal, Decimal256Vector](v) {
+          override def set(index: Int, value: Decimal): Unit =
+            setDecimal256(vector, index, value.toJavaBigDecimal)
+        }
+      case (ScalaDecimalEncoder(_), v: Decimal256Vector) =>
+        new FieldSerializer[BigDecimal, Decimal256Vector](v) {
+          override def set(index: Int, value: BigDecimal): Unit =
+            setDecimal256(vector, index, value.bigDecimal)
+        }
+      case (JavaDecimalEncoder(_, false), v: Decimal256Vector) =>
+        new FieldSerializer[JBigDecimal, Decimal256Vector](v) {
+          override def set(index: Int, value: JBigDecimal): Unit =
+            setDecimal256(vector, index, value)
+        }
+      case (JavaDecimalEncoder(_, true), v: Decimal256Vector) =>
+        new FieldSerializer[Any, Decimal256Vector](v) {
+          override def set(index: Int, value: Any): Unit = {
+            val decimal = value match {
+              case j: JBigDecimal => j
+              case d: BigDecimal => d.bigDecimal
+              case k: BigInt => new JBigDecimal(k.bigInteger)
+              case l: JBigInteger => new JBigDecimal(l)
+              case d: Decimal => d.toJavaBigDecimal
+            }
+            setDecimal256(vector, index, decimal)
+          }
+        }
+      case (ScalaBigIntEncoder, v: Decimal256Vector) =>
+        new FieldSerializer[BigInt, Decimal256Vector](v) {
+          override def set(index: Int, value: BigInt): Unit =
+            setDecimal256(vector, index, new JBigDecimal(value.bigInteger))
+        }
+      case (JavaBigIntEncoder, v: Decimal256Vector) =>
+        new FieldSerializer[JBigInteger, Decimal256Vector](v) {
+          override def set(index: Int, value: JBigInteger): Unit =
+            setDecimal256(vector, index, new JBigDecimal(value))
+        }
       case (DayTimeIntervalEncoder, v: DurationVector) =>
         new FieldSerializer[Duration, DurationVector](v) {
           override def set(index: Int, value: Duration): Unit =
@@ -520,6 +558,15 @@ object ArrowSerializer {
   }
 
   private def setDecimal(vector: DecimalVector, index: Int, decimal: JBigDecimal): Unit = {
+    val scaledDecimal = if (vector.getScale != decimal.scale()) {
+      decimal.setScale(vector.getScale)
+    } else {
+      decimal
+    }
+    vector.setSafe(index, scaledDecimal)
+  }
+
+  private def setDecimal256(vector: Decimal256Vector, index: Int, decimal: JBigDecimal): Unit = {
     val scaledDecimal = if (vector.getScale != decimal.scale()) {
       decimal.setScale(vector.getScale)
     } else {

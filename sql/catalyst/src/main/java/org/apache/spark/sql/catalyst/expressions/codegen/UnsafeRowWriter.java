@@ -19,6 +19,7 @@ package org.apache.spark.sql.catalyst.expressions.codegen;
 
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow;
 import org.apache.spark.sql.types.Decimal;
+import org.apache.spark.sql.types.DecimalType;
 import org.apache.spark.unsafe.Platform;
 import org.apache.spark.unsafe.bitset.BitSetMethods;
 
@@ -190,32 +191,31 @@ public final class UnsafeRowWriter extends UnsafeWriter {
         setNullAt(ordinal);
       }
     } else {
-      // grow the global buffer before writing data.
-      holder.grow(16);
+      if (input != null && input.changePrecision(precision, scale)) {
+        // grow the global buffer before writing data.
+        final int size = input.getSize();
+        holder.grow(size);
 
-      // always zero-out the 16-byte buffer
-      Platform.putLong(getBuffer(), cursor(), 0L);
-      Platform.putLong(getBuffer(), cursor() + 8, 0L);
+        // always zero-out the 16/32-byte buffer
+        for  (int i = 0; i < size / Long.BYTES; i++) {
+          Platform.putLong(getBuffer(), cursor() + i * Long.BYTES, 0L);
+        }
 
-      // Make sure Decimal object has the same scale as DecimalType.
-      // Note that we may pass in null Decimal object to set null for it.
-      if (input == null || !input.changePrecision(precision, scale)) {
+        final byte[] bytes = input.toJavaBigDecimal().unscaledValue().toByteArray();
+        final int numBytes = bytes.length;
+        assert numBytes <= DecimalType.DECIMAL_256_PRECISION_SIZE();
+
+        // Write the bytes to the variable length portion.
+        Platform.copyMemory(bytes, Platform.BYTE_ARRAY_OFFSET, getBuffer(), cursor(), numBytes);
+        setOffsetAndSize(ordinal, bytes.length);
+
+        // move the cursor forward.
+        increaseCursor(size);
+      } else {
         BitSetMethods.set(getBuffer(), startingOffset, ordinal);
         // keep the offset for future update
         setOffsetAndSize(ordinal, 0);
-      } else {
-        final byte[] bytes = input.toJavaBigDecimal().unscaledValue().toByteArray();
-        final int numBytes = bytes.length;
-        assert numBytes <= 16;
-
-        // Write the bytes to the variable length portion.
-        Platform.copyMemory(
-          bytes, Platform.BYTE_ARRAY_OFFSET, getBuffer(), cursor(), numBytes);
-        setOffsetAndSize(ordinal, bytes.length);
       }
-
-      // move the cursor forward.
-      increaseCursor(16);
     }
   }
 }

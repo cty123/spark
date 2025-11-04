@@ -113,10 +113,15 @@ case class DecimalType(precision: Int, scale: Int) extends FractionalType {
 object DecimalType extends AbstractDataType {
   import scala.math.min
 
-  val MAX_PRECISION = 38
-  val MAX_SCALE = 38
+  val DECIMAL_128_PRECISION = 38
+  val DECIMAL_128_PRECISION_SIZE = 16
+  val DECIMAL_256_PRECISION = 76
+  val DECIMAL_256_PRECISION_SIZE = 32
+  val MAX_PRECISION: Int = DECIMAL_256_PRECISION
+  val MAX_SCALE: Int = DECIMAL_256_PRECISION
+  val DEFAULT_PRECISION: Int = DECIMAL_128_PRECISION
   val DEFAULT_SCALE = 18
-  val SYSTEM_DEFAULT: DecimalType = DecimalType(MAX_PRECISION, DEFAULT_SCALE)
+  val SYSTEM_DEFAULT: DecimalType = DecimalType(DEFAULT_PRECISION, DEFAULT_SCALE)
   val USER_DEFAULT: DecimalType = DecimalType(10, 0)
   val MINIMUM_ADJUSTED_SCALE = 6
 

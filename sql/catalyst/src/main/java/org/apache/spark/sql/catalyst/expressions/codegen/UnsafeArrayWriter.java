@@ -19,6 +19,7 @@ package org.apache.spark.sql.catalyst.expressions.codegen;
 
 import org.apache.spark.sql.errors.QueryExecutionErrors;
 import org.apache.spark.sql.types.Decimal;
+import org.apache.spark.sql.types.DecimalType;
 import org.apache.spark.unsafe.Platform;
 import org.apache.spark.unsafe.array.ByteArrayMethods;
 import org.apache.spark.unsafe.bitset.BitSetMethods;
@@ -175,7 +176,7 @@ public final class UnsafeArrayWriter extends UnsafeWriter {
       } else {
         final byte[] bytes = input.toJavaBigDecimal().unscaledValue().toByteArray();
         final int numBytes = bytes.length;
-        assert numBytes <= 16;
+        assert numBytes <= DecimalType.DECIMAL_256_PRECISION_SIZE();
         int roundedSize = ByteArrayMethods.roundNumberOfBytesToNearestWord(numBytes);
         holder.grow(roundedSize);
 

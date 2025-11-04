@@ -83,6 +83,7 @@ object ArrowVectorReader {
       case v: Float4Vector => new Float4VectorReader(v)
       case v: Float8Vector => new Float8VectorReader(v)
       case v: DecimalVector => new DecimalVectorReader(v)
+      case v: Decimal256Vector => new Decimal256VectorReader(v)
       case v: VarCharVector => new VarCharVectorReader(v)
       case v: LargeVarCharVector => new LargeVarCharVectorReader(v)
       case v: VarBinaryVector => new VarBinaryVectorReader(v)
@@ -173,6 +174,18 @@ private[arrow] class Float8VectorReader(v: Float8Vector)
 
 private[arrow] class DecimalVectorReader(v: DecimalVector)
     extends TypedArrowVectorReader[DecimalVector](v) {
+  override def getByte(i: Int): Byte = getJavaDecimal(i).byteValueExact()
+  override def getShort(i: Int): Short = getJavaDecimal(i).shortValueExact()
+  override def getInt(i: Int): Int = getJavaDecimal(i).intValueExact()
+  override def getLong(i: Int): Long = getJavaDecimal(i).longValueExact()
+  override def getFloat(i: Int): Float = getJavaDecimal(i).floatValue()
+  override def getDouble(i: Int): Double = getJavaDecimal(i).doubleValue()
+  override def getJavaDecimal(i: Int): JBigDecimal = vector.getObject(i)
+  override def getString(i: Int): String = getJavaDecimal(i).toPlainString
+}
+
+private[arrow] class Decimal256VectorReader(v: Decimal256Vector)
+  extends TypedArrowVectorReader[Decimal256Vector](v) {
   override def getByte(i: Int): Byte = getJavaDecimal(i).byteValueExact()
   override def getShort(i: Int): Short = getJavaDecimal(i).shortValueExact()
   override def getInt(i: Int): Int = getJavaDecimal(i).intValueExact()

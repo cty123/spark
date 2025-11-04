@@ -234,6 +234,17 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
       batchStmt.addBatch("INSERT INTO \"test\".\"strings_with_nulls\" VALUES ('a a a')")
       batchStmt.addBatch("INSERT INTO \"test\".\"strings_with_nulls\" VALUES (null)")
 
+      batchStmt.addBatch(
+        "CREATE TABLE \"test\".\"paycheck\" (name TEXT(32), currency TEXT(3)," +
+          " amount DECIMAL(70, 25))")
+      batchStmt.addBatch("INSERT INTO \"test\".\"paycheck\"" +
+        "VALUES ('fred', 'BTC', " +
+        "'111112222233333444445555566666777778888899999.1111122222333334444455555')")
+      batchStmt.addBatch("INSERT INTO \"test\".\"paycheck\"" +
+        "VALUES ('mary', 'USD', NULL)")
+      batchStmt.addBatch("INSERT INTO \"test\".\"paycheck\"" +
+        "VALUES ('amy', 'ETH', '11111222223333344444.2222233333444445555566666')")
+
       batchStmt.executeBatch()
 
       conn
@@ -1772,7 +1783,7 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
         Row("test", "person", false), Row("test", "view1", false), Row("test", "view2", false),
         Row("test", "datetime", false), Row("test", "binary_tab", false),
         Row("test", "employee_bonus", false),
-        Row("test", "strings_with_nulls", false)))
+        Row("test", "strings_with_nulls", false), Row("test", "paycheck", false)))
   }
 
   test("SQL API: create table as select") {
@@ -3129,5 +3140,29 @@ class JDBCV2Suite extends QueryTest with SharedSparkSession with ExplainSuiteHel
     )
 
     assertResult(expectedMetadata) { jdbcRdd.getDatabaseMetadata }
+  }
+
+  test("SPARK-50293: Add support for decimal256 data type") {
+    val fredPaycheckDf = sql(
+      "SELECT name, amount, currency FROM h2.test.paycheck WHERE name = 'fred'")
+    val fredPaycheckExpected = Seq(Row("fred",
+      BigDecimal("111112222233333444445555566666777778888899999.1111122222333334444455555"), "BTC"))
+    checkAnswer(fredPaycheckDf, fredPaycheckExpected)
+
+    val maryPaycheckDf = sql(
+      "SELECT name, amount, currency FROM h2.test.paycheck WHERE name = 'mary'")
+    val maryPaycheckExpected = Seq(Row("mary", null, "USD"))
+    checkAnswer(maryPaycheckDf, maryPaycheckExpected)
+
+    val fredPaycheckAmountDf = sql(
+      "SELECT CAST(amount AS DECIMAL(47,2)) FROM h2.test.paycheck WHERE name = 'fred'")
+    val fredPaycheckAmountDfExpected = Seq(Row(
+      BigDecimal("111112222233333444445555566666777778888899999.11")))
+    checkAnswer(fredPaycheckAmountDf, fredPaycheckAmountDfExpected)
+
+    val amyPaycheckDf = sql(
+      "SELECT name, CAST(amount AS DECIMAL(30,4)) FROM h2.test.paycheck WHERE name = 'amy'")
+    val amyPaycheckExpected = Seq(Row("amy", BigDecimal("11111222223333344444.2222")))
+    checkAnswer(amyPaycheckDf, amyPaycheckExpected)
   }
 }
